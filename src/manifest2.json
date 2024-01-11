@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "name": "DeploySentinel Recorder",
+  "name": "Modified DeploySentinel Recorder",
   "description": "Record browser interactions to auto generate Cypress, Playwright and Puppeteer test scripts.",
   "background": {
     "scripts": ["background.bundle.js"]

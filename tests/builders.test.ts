@@ -29,7 +29,7 @@ describe('Test builders', () => {
         .pushCodes('cy.visit();')
         .buildScript();
       expect(output).toBe(
-        `it('Written with DeploySentinel Recorder', () => {\n  // hello-world\n  cy.visit();\n});`
+        `it('Written with Modified DeploySentinel Recorder', () => {\n  // hello-world\n  cy.visit();\n});`
       );
     });
 
@@ -126,7 +126,7 @@ describe('Test builders', () => {
         .buildScript();
       expect(output).toBe(`import { test, expect } from '@playwright/test';
 
-test('Written with DeploySentinel Recorder', async ({ page }) => {
+test('Written with Modified DeploySentinel Recorder', async ({ page }) => {
   // hello-world
   const hellowWorld = () => console.log('hello world')
 });`);

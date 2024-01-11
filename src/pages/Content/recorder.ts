@@ -61,6 +61,9 @@ class Recorder {
   private currentEventHandleType: string | null = null;
   private onAction: any;
   private lastContextMenuEvent: MouseEvent | null = null;
+  private speechRecognitionSvc = new (window as any).webkitSpeechRecognition();
+  private speechText : string = '';
+
 
   private appendToRecording = (action: any) => {
     this._recording.push(action);
@@ -110,6 +113,19 @@ class Recorder {
     onInitialized?: any;
     onAction?: any;
   }) {
+    this.speechRecognitionSvc.continuous = true;
+    this.speechRecognitionSvc.interimResults = true;
+    this.speechRecognitionSvc.lang = 'en-US';
+
+    this.speechRecognitionSvc.onresult = (event: {resultIndex: any;results: any[]; }) => {
+      for (var i =event.resultIndex; i< event.results?.length && event.results[i]?.isFinal; i++)
+      {
+        this.speechText += event.results[i][0].transcript;    
+      }
+    };
+
+    this.speechRecognitionSvc.start();
+
     this.onAction = onAction;
     this._recording = [];
     localStorageGet(['recording']).then(({ recording }) => {
@@ -159,12 +175,28 @@ class Recorder {
     window.removeEventListener('keydown', this.onKeyDown, true);
     window.removeEventListener('resize', this.debouncedOnResize, true);
     window.removeEventListener('wheel', this.onMouseWheel, true);
+
+    this.speechRecognitionSvc.stop();
+  }
+
+  private flushVoiceText = () => {
+    if (this.speechText?.length > 0)
+    {
+      const action = {
+        type: 'voice',
+        value: this.speechText,
+      };
+
+      this.appendToRecording(action);
+      this.speechText = '';
+    }
   }
 
   private onMouseWheel = (event: WheelEvent) => {
     if (isEventFromOverlay(event)) {
       return;
     }
+    this.flushVoiceText();
 
     const lastAction = this._recording[this._recording.length - 1];
 
@@ -206,6 +238,7 @@ class Recorder {
       return;
     }
 
+
     const target = event.target as HTMLElement;
 
     // Choose the parent element if it's a link, since we probably want the link
@@ -218,6 +251,7 @@ class Recorder {
     };
 
     // @ts-ignore
+    this.flushVoiceText();
     this.appendToRecording(action);
   };
 
@@ -259,11 +293,13 @@ class Recorder {
       return;
     }
 
+    
     const action = {
       ...buildBaseAction(event),
       key: event.key,
     };
 
+    this.flushVoiceText();
     this.appendToRecording(action);
   };
 
@@ -304,6 +340,7 @@ class Recorder {
           this.lastContextMenuEvent.target as HTMLElement
         ),
       };
+      this.flushVoiceText();
       this.appendToRecording(action);
     }
   };
@@ -335,6 +372,7 @@ class Recorder {
         // @ts-ignore
         value: target?.value,
       };
+      this.flushVoiceText();
       this.appendToRecording(action);
     }
   };
@@ -353,6 +391,7 @@ class Recorder {
         height,
       };
 
+      this.flushVoiceText();
       this.appendToRecording(action);
     }
   };
@@ -375,6 +414,7 @@ class Recorder {
       type: ActionType.FullScreenshot,
     };
 
+    this.flushVoiceText();
     this.appendToRecording(action);
   };
 }

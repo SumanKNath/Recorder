@@ -129,6 +129,8 @@ export class ActionContext extends BaseAction {
         )} from (${this.action.sourceX}, ${this.action.sourceY}) to (${
           this.action.targetX
         }, ${this.action.targetY})`;
+      case ActionType.Voice:
+        return 'Voice:' + this.action.value;
       default:
         return '';
     }
@@ -441,7 +443,7 @@ export class PlaywrightScriptBuilder extends ScriptBuilder {
   buildScript = () => {
     return `import { test, expect } from '@playwright/test';
 
-test('Written with DeploySentinel Recorder', async ({ page }) => {${this.codes.join(
+test('Written with Modified DeploySentinel Recorder', async ({ page }) => {${this.codes.join(
       ''
     )}});`;
   };
@@ -685,7 +687,125 @@ export class CypressScriptBuilder extends ScriptBuilder {
   };
 
   buildScript = () => {
-    return `it('Written with DeploySentinel Recorder', () => {${this.codes.join(
+    return `it('Written with Modified DeploySentinel Recorder', () => {${this.codes.join(
+      ''
+    )}});`;
+  };
+}
+
+export class EventstreamScriptBuilder extends ScriptBuilder {
+  private waitForNavigation() {
+    return `WaitForNavigation()`;
+  }
+
+  private waitForActionAndNavigation(action: string) {
+    return `PromiseAll([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
+  }
+
+  click = (selector: string, causesNavigation: boolean) => {
+    const actionStr = `Click('${selector}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  hover = (selector: string, causesNavigation: boolean) => {
+    const actionStr = `Hover('${selector}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  load = (url: string) => {
+    this.pushCodes(`Goto('${url}');`);
+    return this;
+  };
+
+  resize = (width: number, height: number) => {
+    this.pushCodes(
+      `SetViewportSize({ width: ${width}, height: ${height} });`
+    );
+    return this;
+  };
+
+  fill = (selector: string, value: string, causesNavigation: boolean) => {
+    const actionStr = `Fill('${selector}', ${JSON.stringify(value)})`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  type = (selector: string, value: string, causesNavigation: boolean) => {
+    const actionStr = `Type('${selector}', ${JSON.stringify(value)})`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  select = (selector: string, option: string, causesNavigation: boolean) => {
+    const actionStr = `SelectOption('${selector}', '${option}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  keydown = (selector: string, key: string, causesNavigation: boolean) => {
+    const actionStr = `Press('${selector}', '${key}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  wheel = (deltaX: number, deltaY: number) => {
+    this.pushCodes(
+      `MouseWheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`
+    );
+    return this;
+  };
+
+  fullScreenshot = () => {
+    this.pushCodes(
+      `Screenshot({ path: 'screenshot.png', fullPage: true });`
+    );
+    return this;
+  };
+
+  awaitText = (text: string) => {
+    this.pushCodes(`WaitForSelector('text=${text}');`);
+    return this;
+  };
+
+  dragAndDrop = (
+    sourceX: number,
+    sourceY: number,
+    targetX: number,
+    targetY: number
+  ) => {
+    this.pushCodes(
+      [
+        `MouseMove(${sourceX}, ${sourceY});`,
+        '  MouseDown();',
+        `  MouseMove(${targetX}, ${targetY});`,
+        '  MouseUp();',
+      ].join('\n')
+    );
+    return this;
+  };
+
+  buildScript = () => {
+    return `test('Written with Modified DeploySentinel Recorder', async ({ page }) => {${this.codes.join(
       ''
     )}});`;
   };
@@ -707,6 +827,9 @@ export const genCode = (
       break;
     case ScriptType.Cypress:
       scriptBuilder = new CypressScriptBuilder(showComments);
+      break;
+    case ScriptType.Eventstream:
+      scriptBuilder = new EventstreamScriptBuilder(showComments); //new EventstreamScriptBuilder(showComments);
       break;
     default:
       throw new Error('Unsupported script type');

@@ -28,6 +28,9 @@ export default function ScriptTypeSelect({
       value={value}
       data-testid="script-type-select"
     >
+      <option value={ScriptType.Eventstream}>
+        Eventstream{!shortDescription ? ' Library' : ''}
+      </option>
       <option value={ScriptType.Playwright}>
         Playwright{!shortDescription ? ' Library' : ''}
       </option>

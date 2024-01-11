@@ -262,8 +262,7 @@ const Popup = () => {
                 }}
                 className="text-grey mt-6"
               >
-                Generate Cypress, Playwright & Puppeteer scripts from your
-                browser actions (ex. click, type, scroll).
+                Interact with your browser (eg. click, type, scroll) and talk to describe the actions; then generate Cypress, Playwright & Puppeteer scripts.
               </div>
               <button
                 className="btn-primary mt-8"
@@ -306,33 +305,6 @@ const Popup = () => {
                     style={{ background: '#21272e' }}
                     className="rounded p-3 text-left mt-12"
                   >
-                    <div className="fw-bold">
-                      <FontAwesomeIcon icon={faInfoCircle} className="mr-2" />
-                      Fix Flaky Cypress Tests w/ DeploySentinel
-                    </div>
-                    <div className="mt-4" style={{ lineHeight: '1.5rem' }}>
-                      Save time debugging test failures & flakes using DOM,
-                      network, and console events captured while running in CI.
-                    </div>
-                    <div className="mt-4">
-                      <a
-                        href="https://deploysentinel.com?utm_source=rcd&utm_medium=bnr"
-                        target="_blank"
-                        className="link-button text-decoration-none fw-bold mr-5"
-                      >
-                        Learn More
-                      </a>
-                      <span
-                        className="text-button text-grey"
-                        onClick={() => {
-                          localStorage?.setItem('showBetaCta', 'false');
-                          setShowBetaCTA(false);
-                        }}
-                        data-testid="view-last-test"
-                      >
-                        No Thanks
-                      </span>
-                    </div>
                   </div>
                 )}
             </div>

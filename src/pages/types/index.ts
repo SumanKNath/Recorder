@@ -12,6 +12,7 @@ export enum ScriptType {
   Puppeteer = 'puppeteer',
   Playwright = 'playwright',
   Cypress = 'cypress',
+  Eventstream = 'eventstream',
 }
 
 export enum ActionType {
@@ -26,6 +27,7 @@ export enum ActionType {
   Navigate = 'navigate',
   Resize = 'resize',
   Wheel = 'wheel',
+  Voice = 'voice',
 }
 
 export enum TagName {
@@ -53,6 +55,7 @@ export const isSupportedActionType = (actionType: any) => {
     ActionType.Load,
     ActionType.Resize,
     ActionType.Wheel,
+    ActionType.Voice,
   ].includes(actionType);
 };
 
@@ -74,6 +77,10 @@ class KeydownAction extends BaseAction {
 
 class InputAction extends BaseAction {
   type: ActionType.Input;
+}
+
+class VoiceAction extends BaseAction {
+  type: ActionType.Voice;
 }
 
 class ClickAction extends BaseAction {
@@ -137,4 +144,6 @@ export type Action =
   | WheelAction
   | FullScreenshotAction
   | AwaitTextAction
-  | ResizeAction;
+  | ResizeAction
+  | VoiceAction;
+

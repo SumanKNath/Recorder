@@ -16,7 +16,7 @@ export default function Logo() {
           userSelect: 'none',
         }}
       >
-        DeploySentinel
+        Modified DeploySentinel
       </div>
     </a>
   );

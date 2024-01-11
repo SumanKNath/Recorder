@@ -107,7 +107,8 @@ export default function genSelectors(element: HTMLElement | null) {
   };
 }
 
-export function getBestSelectorForAction(action: Action, library: ScriptType) {
+
+export function getBestSelectorForActionOld(action: Action, library: ScriptType) {
   switch (action.type) {
     case ActionType.Click:
     case ActionType.Hover:
@@ -123,7 +124,7 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
           : null;
 
       if (action.tagName === TagName.Input) {
-        return (
+      return (
           selectors.testIdSelector ??
           selectors?.id ??
           selectors?.formSelector ??
@@ -164,6 +165,7 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
           null
         );
       }
+     
       return (
         selectors.testIdSelector ??
         selectors?.id ??
@@ -186,6 +188,87 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
         selectors?.attrSelector ??
         null
       );
+    }
+    default:
+      break;
+  }
+  return null;
+}
+
+export function getString(str: string | null)
+{
+  return str ? str + '|' : '';
+}
+
+export function getBestSelectorForAction(action: Action, library: ScriptType) {
+  switch (action.type) {
+    case ActionType.Click:
+    case ActionType.Hover:
+    case ActionType.DragAndDrop: {
+      const selectors = action.selectors;
+      // Only supported for playwright, less than 25 characters, and element only has text inside
+      const textSelector =
+        library === ScriptType.Playwright &&
+        selectors?.text?.length != null &&
+        selectors?.text?.length < 25 &&
+        action.hasOnlyText
+          ? `text=${selectors.text}`
+          : null;
+
+      if (action.tagName === TagName.Input) {
+        const selString = getString(selectors.testIdSelector) +
+          getString(selectors?.id) +
+          getString(selectors?.formSelector) +
+          getString(selectors?.accessibilitySelector) +
+          getString(selectors?.generalSelector) +
+          getString(selectors?.attrSelector);
+        return selString;
+      }
+      if (action.tagName === TagName.A) {
+        const selString = getString(selectors.testIdSelector) +
+        getString(selectors?.id) +
+        getString(selectors?.hrefSelector) +
+        getString(selectors?.accessibilitySelector) +
+        getString(selectors?.generalSelector) +
+        getString(selectors?.attrSelector);
+      return selString;  
+      }
+
+      // Prefer text selectors for spans, ems over general selectors
+      if (
+        action.tagName === TagName.Span ||
+        action.tagName === TagName.EM ||
+        action.tagName === TagName.Cite ||
+        action.tagName === TagName.B ||
+        action.tagName === TagName.Strong
+      ) {
+        const selString = getString(selectors.testIdSelector) +
+          getString(selectors?.id) +
+          getString(selectors?.accessibilitySelector) +
+          getString(selectors?.hrefSelector) +
+          getString(textSelector) +
+          getString(selectors?.generalSelector) +
+          getString(selectors?.attrSelector);
+        return selString;
+      }
+      const selString =  getString(selectors.testIdSelector) +
+        getString(selectors?.id) +
+        getString(selectors?.accessibilitySelector) +
+        getString(selectors?.hrefSelector) +
+        getString(selectors?.generalSelector) +
+        getString(selectors?.attrSelector);
+      return selString;
+    }
+    case ActionType.Input:
+    case ActionType.Keydown: {
+      const selectors = action.selectors;
+      const selString = getString(selectors.testIdSelector) +  
+        getString(selectors?.id) +  
+        getString(selectors?.formSelector) +  
+        getString(selectors?.accessibilitySelector) +  
+        getString(selectors?.generalSelector) +  
+        getString(selectors?.attrSelector) ;
+      return selString;
     }
     default:
       break;
