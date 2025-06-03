@@ -16,7 +16,7 @@ export default function Logo() {
           userSelect: 'none',
         }}
       >
-        Modified DeploySentinel
+        Web UI Recorder
       </div>
     </a>
   );

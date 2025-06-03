@@ -13,7 +13,7 @@ function TriggerButton() {
   // Always set library to Cypress
   const [_, setPreferredLibrary] = usePreferredLibrary();
   useEffect(() => {
-    setPreferredLibrary(ScriptType.Cypress);
+    setPreferredLibrary(ScriptType.Playwright);
   }, []);
 
   const [recordingTabId] = useRecordingState();

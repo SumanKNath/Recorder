@@ -1,6 +1,6 @@
 import { getBestSelectorForAction } from './selector';
 
-import type { Action } from '../types';
+import { Action, ScriptLanguage } from '../types';
 import {
   ActionType,
   BaseAction,
@@ -8,6 +8,7 @@ import {
   TagName,
   isSupportedActionType,
 } from '../types';
+import { config } from '@fortawesome/fontawesome-svg-core';
 
 const FILLABLE_INPUT_TYPES = [
   '',
@@ -141,17 +142,46 @@ export class ActionContext extends BaseAction {
   }
 }
 
+export class ScriptConfig {
+  showComments: boolean;
+  scriptType: ScriptType;
+  scriptLanguage: ScriptLanguage;
+  padding: string;
+  commentPrefix: string;
+  lineEnding: string;
+
+  constructor(
+    scriptType: ScriptType,
+    scriptLanguage: ScriptLanguage,
+    showComments: boolean
+  ) {
+    this.scriptType = scriptType;
+    this.showComments = showComments;
+    this.scriptLanguage = scriptLanguage;
+
+    if (scriptLanguage == ScriptLanguage.JS) {
+      this.padding = '  ';
+      this.commentPrefix = '//';
+      this.lineEnding = ';';
+    } else if (scriptLanguage == ScriptLanguage.Python) {
+      this.padding = '\t';
+      this.commentPrefix = '#';
+      this.lineEnding = '';
+    }
+  }
+}
+
 export abstract class ScriptBuilder {
   protected readonly codes: string[];
 
   protected readonly actionContexts: ActionContext[];
 
-  protected readonly showComments: boolean;
+  protected readonly config: ScriptConfig;
 
-  constructor(showComments: boolean) {
+  constructor(config: ScriptConfig) {
     this.codes = [];
     this.actionContexts = [];
-    this.showComments = showComments;
+    this.config = config;
   }
 
   abstract click: (selector: string, causesNavigation: boolean) => this;
@@ -207,9 +237,9 @@ export abstract class ScriptBuilder {
   abstract buildScript: () => string;
 
   private transformActionIntoCodes = (actionContext: ActionContext) => {
-    if (this.showComments) {
+    if (this.config.showComments) {
       const actionDescription = actionContext.getDescription();
-      this.pushComments(`// ${actionDescription}`);
+      this.pushComments(`${this.config.commentPrefix} ${actionDescription}`);
     }
 
     const bestSelector = actionContext.getBestSelector();
@@ -286,12 +316,15 @@ export abstract class ScriptBuilder {
   };
 
   protected pushComments = (comments: string) => {
-    this.codes.push(`\n  ${comments}`);
+    this.codes.push(`\n${this.config.padding}${comments}`);
     return this;
   };
 
   protected pushCodes = (codes: string) => {
-    this.codes.push(`\n  ${codes}\n`);
+    let arr = codes.split('\n');
+    for (let i = 0; i < arr.length; i++) {
+      this.codes.push(`\n${this.config.padding}${arr[i]}`);
+    }
     return this;
   };
 
@@ -369,7 +402,7 @@ export class PlaywrightScriptBuilder extends ScriptBuilder {
   };
 
   fill = (selector: string, value: string, causesNavigation: boolean) => {
-    const actionStr = `page.fill('${selector}', ${JSON.stringify(value)})`;
+    const actionStr = `page.fill('${selector}', '${JSON.stringify(value)}')`;
     const action = causesNavigation
       ? this.waitForActionAndNavigation(actionStr)
       : `await ${actionStr};`;
@@ -378,7 +411,7 @@ export class PlaywrightScriptBuilder extends ScriptBuilder {
   };
 
   type = (selector: string, value: string, causesNavigation: boolean) => {
-    const actionStr = `page.type('${selector}', ${JSON.stringify(value)})`;
+    const actionStr = `page.type('${selector}', '${JSON.stringify(value)}')`;
     const action = causesNavigation
       ? this.waitForActionAndNavigation(actionStr)
       : `await ${actionStr};`;
@@ -443,9 +476,156 @@ export class PlaywrightScriptBuilder extends ScriptBuilder {
   buildScript = () => {
     return `import { test, expect } from '@playwright/test';
 
-test('Written with Modified DeploySentinel Recorder', async ({ page }) => {${this.codes.join(
+test('Written with Web UI Recorder', async ({ page }) => {${this.codes.join(
       ''
     )}});`;
+  };
+}
+
+export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
+  private waitForNavigation() {
+    return `page.waitForNavigation()`;
+  }
+
+  private waitForActionAndNavigation(action: string) {
+    // return `await Promise.all([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
+    return action;
+  }
+
+  private useMultipleSelectors(sel_str: string, command: string) {
+    return [
+      `selector_string = '${sel_str}'`,
+      `selectors = set(selector_string.split('|'))`,
+      `for selector in selectors:`,
+      `\tif selector and await page.query_selector(selector):`,
+      `\t\t${command}`,
+      `\t\tbreak`,
+    ].join('\n');
+  }
+
+  click = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      'await page.click(selector)'
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  hover = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      'await page.hover(selector)'
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  load = (url: string) => {
+    this.pushCodes(`await page.goto('${url}')`);
+    return this;
+  };
+
+  resize = (width: number, height: number) => {
+    this.pushCodes(
+      `await page.set_viewport_size({ "width": ${width}, "height": ${height} })`
+    );
+    return this;
+  };
+
+  fill = (selectorStr: string, value: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `await page.fill(selector, ${JSON.stringify(value)})`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  type = (selectorStr: string, value: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `await page.type(selector, ${JSON.stringify(value)})`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  select = (selectorStr: string, option: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `await page.select_option(selector, '${option}')`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  keydown = (selectorStr: string, key: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `await page.press(selector, '${key}')`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  wheel = (deltaX: number, deltaY: number) => {
+    this.pushCodes(
+      `await page.mouse.wheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`
+    );
+    return this;
+  };
+
+  fullScreenshot = () => {
+    this.pushCodes(
+      `await page.screenshot({ path: 'screenshot.png', fullPage: true });`
+    );
+    return this;
+  };
+
+  awaitText = (text: string) => {
+    this.pushCodes(`await page.wait_for_selector('text=${text}');`);
+    return this;
+  };
+
+  dragAndDrop = (
+    sourceX: number,
+    sourceY: number,
+    targetX: number,
+    targetY: number
+  ) => {
+    this.pushCodes(
+      [
+        `await page.mouse.move(${sourceX}, ${sourceY});`,
+        'await page.mouse.down();',
+        `await page.mouse.move(${targetX}, ${targetY});`,
+        'await page.mouse.up();',
+      ].join('\n')
+    );
+    return this;
+  };
+
+  buildScript = () => {
+    return `from playwright.async_api import async_playwright, Page
+async def execute(page):\n ${this.codes.join('')}`;
   };
 }
 
@@ -687,7 +867,7 @@ export class CypressScriptBuilder extends ScriptBuilder {
   };
 
   buildScript = () => {
-    return `it('Written with Modified DeploySentinel Recorder', () => {${this.codes.join(
+    return `it('Written with Web UI Recorder', () => {${this.codes.join(
       ''
     )}});`;
   };
@@ -726,9 +906,7 @@ export class EventstreamScriptBuilder extends ScriptBuilder {
   };
 
   resize = (width: number, height: number) => {
-    this.pushCodes(
-      `SetViewportSize({ width: ${width}, height: ${height} });`
-    );
+    this.pushCodes(`SetViewportSize({ width: ${width}, height: ${height} });`);
     return this;
   };
 
@@ -769,16 +947,12 @@ export class EventstreamScriptBuilder extends ScriptBuilder {
   };
 
   wheel = (deltaX: number, deltaY: number) => {
-    this.pushCodes(
-      `MouseWheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`
-    );
+    this.pushCodes(`MouseWheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`);
     return this;
   };
 
   fullScreenshot = () => {
-    this.pushCodes(
-      `Screenshot({ path: 'screenshot.png', fullPage: true });`
-    );
+    this.pushCodes(`Screenshot({ path: 'screenshot.png', fullPage: true });`);
     return this;
   };
 
@@ -805,7 +979,7 @@ export class EventstreamScriptBuilder extends ScriptBuilder {
   };
 
   buildScript = () => {
-    return `test('Written with Modified DeploySentinel Recorder', async ({ page }) => {${this.codes.join(
+    return `test('Written with Web UI Recorder', async ({ page }) => {${this.codes.join(
       ''
     )}});`;
   };
@@ -817,19 +991,40 @@ export const genCode = (
   scriptType: ScriptType
 ): string => {
   let scriptBuilder: ScriptBuilder;
+  let config: ScriptConfig;
 
   switch (scriptType) {
-    case ScriptType.Playwright:
-      scriptBuilder = new PlaywrightScriptBuilder(showComments);
+    case ScriptType.PlaywrightPython:
+      config = new ScriptConfig(
+        ScriptType.PlaywrightPython,
+        ScriptLanguage.Python,
+        showComments
+      );
+      scriptBuilder = new PlaywrightPythonScriptBuilder(config);
       break;
     case ScriptType.Puppeteer:
-      scriptBuilder = new PuppeteerScriptBuilder(showComments);
+      config = new ScriptConfig(
+        ScriptType.Puppeteer,
+        ScriptLanguage.JS,
+        showComments
+      );
+      scriptBuilder = new PuppeteerScriptBuilder(config);
       break;
     case ScriptType.Cypress:
-      scriptBuilder = new CypressScriptBuilder(showComments);
+      config = new ScriptConfig(
+        ScriptType.Cypress,
+        ScriptLanguage.JS,
+        showComments
+      );
+      scriptBuilder = new CypressScriptBuilder(config);
       break;
     case ScriptType.Eventstream:
-      scriptBuilder = new EventstreamScriptBuilder(showComments); //new EventstreamScriptBuilder(showComments);
+      config = new ScriptConfig(
+        ScriptType.Eventstream,
+        ScriptLanguage.JS,
+        showComments
+      );
+      scriptBuilder = new EventstreamScriptBuilder(config);
       break;
     default:
       throw new Error('Unsupported script type');
@@ -846,7 +1041,7 @@ export const genCode = (
     const causesNavigation = nextAction?.type === ActionType.Navigate;
 
     scriptBuilder.pushActionContext(
-      new ActionContext(action, scriptType, {
+      new ActionContext(action, config.scriptType, {
         causesNavigation,
         isStateful: isActionStateful(action),
       })

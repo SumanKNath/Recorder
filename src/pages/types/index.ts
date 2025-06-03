@@ -8,6 +8,12 @@ export enum BarPosition {
   Bottom = 'bottom',
 }
 
+export enum ScriptLanguage {
+  JS = 'js',
+  Python = 'python',
+  Java = 'java',
+}
+
 export enum ScriptType {
   Puppeteer = 'puppeteer',
   Playwright = 'playwright',
@@ -146,4 +152,3 @@ export type Action =
   | AwaitTextAction
   | ResizeAction
   | VoiceAction;
-

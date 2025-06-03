@@ -2,8 +2,10 @@ import {
   CypressScriptBuilder,
   PlaywrightScriptBuilder,
   PuppeteerScriptBuilder,
+  ScriptConfig,
   truncateText,
 } from '../src/pages/builders';
+import { ScriptLanguage, ScriptType } from '../src/pages/types';
 
 describe('Test builders', () => {
   test('truncateText', () => {
@@ -15,9 +17,11 @@ describe('Test builders', () => {
   describe('CypressScriptBuilder', () => {
     let builder: any;
     let mockPushCodes: any;
+    let config: ScriptConfig;
 
     beforeEach(() => {
-      builder = new CypressScriptBuilder(true);
+      config = new ScriptConfig(ScriptType.Cypress, ScriptLanguage.JS, true);
+      builder = new CypressScriptBuilder(config);
       mockPushCodes = jest.spyOn(builder, 'pushCodes').mockReturnValue(builder);
     });
 
@@ -29,7 +33,7 @@ describe('Test builders', () => {
         .pushCodes('cy.visit();')
         .buildScript();
       expect(output).toBe(
-        `it('Written with Modified DeploySentinel Recorder', () => {\n  // hello-world\n  cy.visit();\n});`
+        `it('Written with Web UI Recorder', () => {\n  // hello-world\n  cy.visit();\n});`
       );
     });
 
@@ -110,9 +114,15 @@ describe('Test builders', () => {
   describe('PlaywrightScriptBuilder', () => {
     let builder: any;
     let mockWaitForActionAndNavigation: any;
+    let config: ScriptConfig;
 
     beforeEach(() => {
-      builder = new PlaywrightScriptBuilder(true);
+      config = new ScriptConfig(
+        ScriptType.Playwright,
+        ScriptLanguage.Python,
+        true
+      );
+      builder = new PlaywrightScriptBuilder(config);
 
       mockWaitForActionAndNavigation = jest
         .spyOn(builder, 'waitForActionAndNavigation')
@@ -126,7 +136,7 @@ describe('Test builders', () => {
         .buildScript();
       expect(output).toBe(`import { test, expect } from '@playwright/test';
 
-test('Written with Modified DeploySentinel Recorder', async ({ page }) => {
+test('Written with Web UI Recorder', async ({ page }) => {
   // hello-world
   const hellowWorld = () => console.log('hello world')
 });`);
@@ -259,9 +269,11 @@ test('Written with Modified DeploySentinel Recorder', async ({ page }) => {
     let builder: any;
     let mockWaitForSelectorAndNavigation: any;
     let mockWaitForSelector: any;
+    let config: ScriptConfig;
 
     beforeEach(() => {
-      builder = new PuppeteerScriptBuilder(true);
+      config = new ScriptConfig(ScriptType.Puppeteer, ScriptLanguage.JS, true);
+      builder = new PuppeteerScriptBuilder(config);
 
       mockWaitForSelectorAndNavigation = jest
         .spyOn(builder, 'waitForSelectorAndNavigation')

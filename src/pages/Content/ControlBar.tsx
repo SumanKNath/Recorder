@@ -213,7 +213,7 @@ export default function ControlBar({ onExit }: { onExit: () => void }) {
     });
   }, []);
 
-  const displayedScriptType = preferredLibrary ?? ScriptType.Cypress;
+  const displayedScriptType = preferredLibrary ?? ScriptType.Playwright;
 
   const rect = hoveredElement?.getBoundingClientRect();
   const displayedSelector = getBestSelectorForAction(

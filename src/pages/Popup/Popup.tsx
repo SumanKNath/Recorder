@@ -48,7 +48,7 @@ function LastStepPanel({
   );
   const [copyCodeConfirm, setCopyCodeConfirm] = useState<boolean>(false);
 
-  const displayedScriptType = preferredLibrary ?? ScriptType.Cypress;
+  const displayedScriptType = preferredLibrary ?? ScriptType.Playwright;
 
   return (
     <div>
@@ -163,7 +163,7 @@ const Popup = () => {
   }, []);
 
   const onRecordNewTestClick = async () => {
-    onNewRecording(preferredLibrary ?? ScriptType.Cypress);
+    onNewRecording(preferredLibrary ?? ScriptType.Playwright);
 
     const currentTab = await getCurrentTab();
     const tabId = currentTab.id;
@@ -246,7 +246,7 @@ const Popup = () => {
               <Logo />
               <div>
                 <a
-                  href="https://www.deploysentinel.com/docs/recorder"
+                  href="https://www.microsoft.com/docs/recorder"
                   target="_blank"
                   className="text-button text-decoration-none text-sm text-grey"
                 >
@@ -262,7 +262,9 @@ const Popup = () => {
                 }}
                 className="text-grey mt-6"
               >
-                Interact with your browser (eg. click, type, scroll) and talk to describe the actions; then generate Cypress, Playwright & Puppeteer scripts.
+                Interact with your browser (eg. click, type, scroll) and talk to
+                describe the actions; then generate Cypress, Playwright &
+                Puppeteer scripts.
               </div>
               <button
                 className="btn-primary mt-8"
@@ -281,7 +283,7 @@ const Popup = () => {
                   <div>Preferred Library: &nbsp;</div>
                   <ScriptTypeSelect
                     color="#c4c4c4"
-                    value={preferredLibrary ?? ScriptType.Cypress}
+                    value={preferredLibrary ?? ScriptType.Playwright}
                     onChange={setPreferredLibrary}
                     shortDescription
                   />
@@ -304,8 +306,7 @@ const Popup = () => {
                   <div
                     style={{ background: '#21272e' }}
                     className="rounded p-3 text-left mt-12"
-                  >
-                  </div>
+                  ></div>
                 )}
             </div>
           </>

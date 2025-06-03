@@ -1,6 +1,7 @@
 {
+  "version": "1.0",
   "manifest_version": 2,
-  "name": "Modified DeploySentinel Recorder",
+  "name": "Web UI Recorder",
   "description": "Record browser interactions to auto generate Cypress, Playwright and Puppeteer test scripts.",
   "background": {
     "scripts": ["background.bundle.js"]
@@ -22,7 +23,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://*.deploysentinel.com/*"],
+      "matches": ["https://*.microsoft.com/*"],
       "js": ["bridge.bundle.js"]
     },
     {
