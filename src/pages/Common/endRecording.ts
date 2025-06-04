@@ -12,7 +12,7 @@ export async function endRecording() {
 
   // We need to send the generated recording back to the webapp
   if (returnTabId != null) {
-    const code = genCode(recording, true, ScriptType.Playwright);
+    const code = genCode(recording, true, ScriptType.PlaywrightPython);
 
     chrome.runtime.sendMessage({
       type: 'forward-recording',

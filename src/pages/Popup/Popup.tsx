@@ -48,7 +48,7 @@ function LastStepPanel({
   );
   const [copyCodeConfirm, setCopyCodeConfirm] = useState<boolean>(false);
 
-  const displayedScriptType = preferredLibrary ?? ScriptType.Playwright;
+  const displayedScriptType = preferredLibrary ?? ScriptType.PlaywrightPython;
 
   return (
     <div>
@@ -163,7 +163,7 @@ const Popup = () => {
   }, []);
 
   const onRecordNewTestClick = async () => {
-    onNewRecording(preferredLibrary ?? ScriptType.Playwright);
+    onNewRecording(preferredLibrary ?? ScriptType.PlaywrightPython);
 
     const currentTab = await getCurrentTab();
     const tabId = currentTab.id;
@@ -283,7 +283,7 @@ const Popup = () => {
                   <div>Preferred Library: &nbsp;</div>
                   <ScriptTypeSelect
                     color="#c4c4c4"
-                    value={preferredLibrary ?? ScriptType.Playwright}
+                    value={preferredLibrary ?? ScriptType.PlaywrightPython}
                     onChange={setPreferredLibrary}
                     shortDescription
                   />

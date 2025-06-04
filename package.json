@@ -4,7 +4,7 @@
   "description": "A browser extension that generates Cypress, Playwright and Puppeteer scripts automatically from your browser interactions.",
   "license": "Apache-2.0",
   "scripts": {
-    "build-chrome": "$env:MANIFEST_VERSION=3 node utils/build.js  && zip -r build_chrome.zip build",
+    "build-chrome": "set MANIFEST_VERSION=3 && node utils/build.js  && zip -r build_chrome.zip build",
     "build-ff": "$env:MANIFEST_VERSION=2 node utils/build.js && zip -jr build_ff.zip build",
     "start-chrome": "$env:MANIFEST_VERSION=3 node utils/webserver.js",
     "start-ff": "$env:MANIFEST_VERSION=2 node utils/webserver.js",

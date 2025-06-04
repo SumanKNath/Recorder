@@ -69,12 +69,12 @@ function RenderActionText({ action }: { action: Action }) {
       {action.type === ActionType.Click
         ? `Click on ${action.tagName.toLowerCase()} ${getBestSelectorForAction(
             action,
-            ScriptType.Playwright
+            ScriptType.PlaywrightPython
           )}`
         : action.type === ActionType.Hover
         ? `Hover over ${action.tagName.toLowerCase()} ${getBestSelectorForAction(
             action,
-            ScriptType.Playwright
+            ScriptType.PlaywrightPython
           )}`
         : action.type === ActionType.Input
         ? `Fill "${
@@ -83,7 +83,7 @@ function RenderActionText({ action }: { action: Action }) {
               : action.value
           }" on ${action.tagName.toLowerCase()} ${getBestSelectorForAction(
             action,
-            ScriptType.Playwright
+            ScriptType.PlaywrightPython
           )}`
         : action.type === ActionType.Keydown
         ? `Press ${action.key} on ${action.tagName.toLowerCase()}`
@@ -213,7 +213,7 @@ export default function ControlBar({ onExit }: { onExit: () => void }) {
     });
   }, []);
 
-  const displayedScriptType = preferredLibrary ?? ScriptType.Playwright;
+  const displayedScriptType = preferredLibrary ?? ScriptType.PlaywrightPython;
 
   const rect = hoveredElement?.getBoundingClientRect();
   const displayedSelector = getBestSelectorForAction(

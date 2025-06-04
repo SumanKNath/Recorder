@@ -29,7 +29,7 @@ function ActionListItem({
             <span>"{action.selectors.text}"</span>
           ) : (
             <span className="mono">
-              {getBestSelectorForAction(action, ScriptType.Playwright)}
+              {getBestSelectorForAction(action, ScriptType.PlaywrightPython)}
             </span>
           )}
         </>
@@ -44,7 +44,7 @@ function ActionListItem({
             <span>"{action.selectors.text}"</span>
           ) : (
             <span className="mono">
-              {getBestSelectorForAction(action, ScriptType.Playwright)}
+              {getBestSelectorForAction(action, ScriptType.PlaywrightPython)}
             </span>
           )}
         </>
@@ -65,7 +65,7 @@ function ActionListItem({
           </span>{' '}
           on{' '}
           <span className="mono">
-            {getBestSelectorForAction(action, ScriptType.Playwright)}
+            {getBestSelectorForAction(action, ScriptType.PlaywrightPython)}
           </span>
         </>
       ) : action.type === ActionType.Keydown ? (
@@ -73,7 +73,7 @@ function ActionListItem({
           <span className="em-text">Press</span>{' '}
           <span className="mono">"{action.key}"</span> on{' '}
           <span className="mono">
-            {getBestSelectorForAction(action, ScriptType.Playwright)}
+            {getBestSelectorForAction(action, ScriptType.PlaywrightPython)}
           </span>
         </>
       ) : action.type === ActionType.Resize ? (

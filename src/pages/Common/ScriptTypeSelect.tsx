@@ -31,7 +31,7 @@ export default function ScriptTypeSelect({
       <option value={ScriptType.Eventstream}>
         Eventstream{!shortDescription ? ' Library' : ''}
       </option>
-      <option value={ScriptType.Playwright}>
+      <option value={ScriptType.PlaywrightPython}>
         Playwright{!shortDescription ? ' Library' : ''}
       </option>
       <option value={ScriptType.Puppeteer}>

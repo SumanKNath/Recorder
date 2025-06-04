@@ -118,7 +118,7 @@ describe('Test builders', () => {
 
     beforeEach(() => {
       config = new ScriptConfig(
-        ScriptType.Playwright,
+        ScriptType.PlaywrightPython,
         ScriptLanguage.Python,
         true
       );
