@@ -1,6 +1,8 @@
 import {
   CypressScriptBuilder,
-  PlaywrightScriptBuilder,
+  PlaywrightJSScriptBuilder,
+  PlaywrightPythonScriptBuilder,
+  PlaywrightJavaScriptBuilder,
   PuppeteerScriptBuilder,
   ScriptConfig,
   truncateText,
@@ -111,7 +113,7 @@ describe('Test builders', () => {
     });
   });
 
-  describe('PlaywrightScriptBuilder', () => {
+  describe('PlaywrightPythonScriptBuilder', () => {
     let builder: any;
     let mockWaitForActionAndNavigation: any;
     let config: ScriptConfig;
@@ -122,7 +124,315 @@ describe('Test builders', () => {
         ScriptLanguage.Python,
         true
       );
-      builder = new PlaywrightScriptBuilder(config);
+      builder = new PlaywrightPythonScriptBuilder(config);
+
+      mockWaitForActionAndNavigation = jest
+        .spyOn(builder, 'waitForActionAndNavigation')
+        .mockImplementation(() => 'foo');
+    });
+
+    test('pushComments, pushCodes and build', () => {
+      const output = builder
+        .pushComments('// hello-world')
+        .pushCodes("const hellowWorld = () => console.log('hello world')")
+        .buildScript();
+      expect(output).toBe(`import { test, expect } from '@playwright/test';
+
+test('Written with Web UI Recorder', async ({ page }) => {
+  // hello-world
+  const hellowWorld = () => console.log('hello world')
+});`);
+    });
+
+    test('waitForNavigation', () => {
+      expect(builder.waitForNavigation()).toBe('page.waitForNavigation()');
+    });
+
+    test('waitForActionAndNavigation', () => {
+      mockWaitForActionAndNavigation.mockRestore();
+      expect(builder.waitForActionAndNavigation('action')).toBe(
+        'await Promise.all([\n    action,\n    page.waitForNavigation()\n  ]);'
+      );
+    });
+
+    test('click', () => {
+      builder.click('selector', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.click('selector')"
+      );
+      builder.click('selector', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.click('selector');\n"
+      );
+    });
+
+    test('hover', () => {
+      builder.hover('selector', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.hover('selector')"
+      );
+      builder.hover('selector', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.hover('selector');\n"
+      );
+    });
+
+    test('load', () => {
+      builder.load('url');
+      expect(builder.getLatestCode()).toBe("\n  await page.goto('url');\n");
+    });
+
+    test('resize', () => {
+      builder.resize(1, 1);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.setViewportSize({ width: 1, height: 1 });\n'
+      );
+    });
+
+    test('fill', () => {
+      builder.fill('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        'page.fill(\'selector\', "value")'
+      );
+      builder.fill('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.fill(\'selector\', "value");\n'
+      );
+    });
+
+    test('type', () => {
+      builder.type('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        'page.type(\'selector\', "value")'
+      );
+      builder.type('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.type(\'selector\', "value");\n'
+      );
+    });
+
+    test('select', () => {
+      builder.select('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.selectOption('selector', 'value')"
+      );
+      builder.select('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.selectOption('selector', 'value');\n"
+      );
+    });
+
+    test('keydown', () => {
+      builder.keydown('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.press('selector', 'value')"
+      );
+      builder.keydown('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.press('selector', 'value');\n"
+      );
+    });
+
+    test('wheel', () => {
+      builder.wheel(1.6, 1.1);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.mouse.wheel(1, 1);\n'
+      );
+    });
+
+    test('fullScreenshot', () => {
+      builder.fullScreenshot();
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.screenshot({ path: 'screenshot.png', fullPage: true });\n"
+      );
+    });
+
+    test('awaitText', () => {
+      builder.awaitText('foo');
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.waitForSelector('text=foo');\n"
+      );
+    });
+  });
+
+  describe('PlaywrightJavaScriptBuilder', () => {
+    let builder: any;
+    let mockWaitForActionAndNavigation: any;
+    let config: ScriptConfig;
+
+    beforeEach(() => {
+      config = new ScriptConfig(
+        ScriptType.PlaywrightJava,
+        ScriptLanguage.Java,
+        true
+      );
+      builder = new PlaywrightJavaScriptBuilder(config);
+
+      mockWaitForActionAndNavigation = jest
+        .spyOn(builder, 'waitForActionAndNavigation')
+        .mockImplementation(() => 'foo');
+    });
+
+    test('pushComments, pushCodes and build', () => {
+      const output = builder
+        .pushComments('// hello-world')
+        .pushCodes("const hellowWorld = () => console.log('hello world')")
+        .buildScript();
+      expect(output).toBe(`import { test, expect } from '@playwright/test';
+
+test('Written with Web UI Recorder', async ({ page }) => {
+  // hello-world
+  const hellowWorld = () => console.log('hello world')
+});`);
+    });
+
+    test('waitForNavigation', () => {
+      expect(builder.waitForNavigation()).toBe('page.waitForNavigation()');
+    });
+
+    test('waitForActionAndNavigation', () => {
+      mockWaitForActionAndNavigation.mockRestore();
+      expect(builder.waitForActionAndNavigation('action')).toBe(
+        'await Promise.all([\n    action,\n    page.waitForNavigation()\n  ]);'
+      );
+    });
+
+    test('click', () => {
+      builder.click('selector', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.click('selector')"
+      );
+      builder.click('selector', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.click('selector');\n"
+      );
+    });
+
+    test('hover', () => {
+      builder.hover('selector', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.hover('selector')"
+      );
+      builder.hover('selector', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.hover('selector');\n"
+      );
+    });
+
+    test('load', () => {
+      builder.load('url');
+      expect(builder.getLatestCode()).toBe("\n  await page.goto('url');\n");
+    });
+
+    test('resize', () => {
+      builder.resize(1, 1);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.setViewportSize({ width: 1, height: 1 });\n'
+      );
+    });
+
+    test('fill', () => {
+      builder.fill('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        'page.fill(\'selector\', "value")'
+      );
+      builder.fill('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.fill(\'selector\', "value");\n'
+      );
+    });
+
+    test('type', () => {
+      builder.type('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        'page.type(\'selector\', "value")'
+      );
+      builder.type('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.type(\'selector\', "value");\n'
+      );
+    });
+
+    test('select', () => {
+      builder.select('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.selectOption('selector', 'value')"
+      );
+      builder.select('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.selectOption('selector', 'value');\n"
+      );
+    });
+
+    test('keydown', () => {
+      builder.keydown('selector', 'value', true);
+      expect(builder.getLatestCode()).toBe('\n  foo\n');
+      expect(builder.waitForActionAndNavigation).toHaveBeenNthCalledWith(
+        1,
+        "page.press('selector', 'value')"
+      );
+      builder.keydown('selector', 'value', false);
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.press('selector', 'value');\n"
+      );
+    });
+
+    test('wheel', () => {
+      builder.wheel(1.6, 1.1);
+      expect(builder.getLatestCode()).toBe(
+        '\n  await page.mouse.wheel(1, 1);\n'
+      );
+    });
+
+    test('fullScreenshot', () => {
+      builder.fullScreenshot();
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.screenshot({ path: 'screenshot.png', fullPage: true });\n"
+      );
+    });
+
+    test('awaitText', () => {
+      builder.awaitText('foo');
+      expect(builder.getLatestCode()).toBe(
+        "\n  await page.waitForSelector('text=foo');\n"
+      );
+    });
+  });
+
+  describe('PlaywrightJSScriptBuilder', () => {
+    let builder: any;
+    let mockWaitForActionAndNavigation: any;
+    let config: ScriptConfig;
+
+    beforeEach(() => {
+      config = new ScriptConfig(
+        ScriptType.PlaywrightJS,
+        ScriptLanguage.JS,
+        true
+      );
+      builder = new PlaywrightJSScriptBuilder(config);
 
       mockWaitForActionAndNavigation = jest
         .spyOn(builder, 'waitForActionAndNavigation')

@@ -167,6 +167,10 @@ export class ScriptConfig {
       this.padding = '\t';
       this.commentPrefix = '#';
       this.lineEnding = '';
+    } else if (scriptLanguage == ScriptLanguage.Java) {
+      this.padding = '  ';
+      this.commentPrefix = '//';
+      this.lineEnding = ';';
     }
   }
 }
@@ -316,14 +320,14 @@ export abstract class ScriptBuilder {
   };
 
   protected pushComments = (comments: string) => {
-    this.codes.push(`\n${this.config.padding}${comments}`);
+    this.codes.push(`${this.config.padding}${comments}\n`);
     return this;
   };
 
   protected pushCodes = (codes: string) => {
     let arr = codes.split('\n');
     for (let i = 0; i < arr.length; i++) {
-      this.codes.push(`\n${this.config.padding}${arr[i]}`);
+      this.codes.push(`${this.config.padding}${arr[i]}\n`);
     }
     return this;
   };
@@ -362,7 +366,7 @@ export abstract class ScriptBuilder {
   getLatestCode = () => this.codes[this.codes.length - 1];
 }
 
-export class PlaywrightScriptBuilder extends ScriptBuilder {
+export class PlaywrightJSScriptBuilder extends ScriptBuilder {
   private waitForNavigation() {
     return `page.waitForNavigation()`;
   }
@@ -483,13 +487,9 @@ test('Written with Web UI Recorder', async ({ page }) => {${this.codes.join(
 }
 
 export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
-  private waitForNavigation() {
-    return `page.waitForNavigation()`;
-  }
-
   private waitForActionAndNavigation(action: string) {
     // return `await Promise.all([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
-    return action;
+    return `${action}\nawait asyncio.sleep(2)`;
   }
 
   private useMultipleSelectors(sel_str: string, command: string) {
@@ -589,20 +589,20 @@ export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
 
   wheel = (deltaX: number, deltaY: number) => {
     this.pushCodes(
-      `await page.mouse.wheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`
+      `await page.mouse.wheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)})`
     );
     return this;
   };
 
   fullScreenshot = () => {
     this.pushCodes(
-      `await page.screenshot({ path: 'screenshot.png', fullPage: true });`
+      `await page.screenshot({ path: 'screenshot.png', fullPage: true })`
     );
     return this;
   };
 
   awaitText = (text: string) => {
-    this.pushCodes(`await page.wait_for_selector('text=${text}');`);
+    this.pushCodes(`await page.wait_for_selector('text=${text}')`);
     return this;
   };
 
@@ -614,10 +614,10 @@ export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
   ) => {
     this.pushCodes(
       [
-        `await page.mouse.move(${sourceX}, ${sourceY});`,
-        'await page.mouse.down();',
-        `await page.mouse.move(${targetX}, ${targetY});`,
-        'await page.mouse.up();',
+        `await page.mouse.move(${sourceX}, ${sourceY})`,
+        'await page.mouse.down()',
+        `await page.mouse.move(${targetX}, ${targetY})`,
+        'await page.mouse.up()',
       ].join('\n')
     );
     return this;
@@ -625,7 +625,170 @@ export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
 
   buildScript = () => {
     return `from playwright.async_api import async_playwright, Page
+import asyncio
 async def execute(page):\n ${this.codes.join('')}`;
+  };
+}
+
+export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
+  protected varCreated: boolean = false;
+
+  private waitForActionAndNavigation(action: string) {
+    // return `await Promise.all([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
+    return `${action};\nThread.sleep(2000);`;
+  }
+
+  private useMultipleSelectors(sel_str: string, command: string) {
+    let varDeclPrefix = '';
+    if (!this.varCreated) {
+      varDeclPrefix = 'List<String> ';
+      this.varCreated = true;
+    }
+
+    return [
+      `String selector_string = '${sel_str}';`,
+      `${varDeclPrefix}uniqueSelectors = Arrays.stream(input.split("\\|"))`,
+      `                                    .filter(s -> !s.isEmpty())`,
+      `                                    .distinct()`,
+      `                                    .toList();`,
+      ` for (String selector : uniqueSelectors) {`,
+      `\tif (page.querySelector(selector) != null) {`,
+      `\t\t${command};`,
+      `\t\tbreak;`,
+      `\t}`,
+      `}`,
+    ].join('\n');
+  }
+
+  click = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      'page.click(selector);'
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  hover = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      'page.hover(selector);'
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  load = (url: string) => {
+    this.pushCodes(`page.navigate('${url}');`);
+    return this;
+  };
+
+  resize = (width: number, height: number) => {
+    this.pushCodes(`page.setViewportSize(${width}, ${height});`);
+    return this;
+  };
+
+  fill = (selectorStr: string, value: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `page.fill(selector, ${JSON.stringify(value)});`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  type = (selectorStr: string, value: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `page.type(selector, ${JSON.stringify(value)});`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  select = (selectorStr: string, option: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `page.selectOption(selector, '${option}');`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  keydown = (selectorStr: string, key: string, causesNavigation: boolean) => {
+    const actionStr = this.useMultipleSelectors(
+      selectorStr,
+      `page.press(selector, '${key}');`
+    );
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : actionStr;
+    this.pushCodes(action);
+    return this;
+  };
+
+  wheel = (deltaX: number, deltaY: number) => {
+    this.pushCodes(
+      `page.mouse().wheel(${Math.floor(deltaX)}, ${Math.floor(deltaY)});`
+    );
+    return this;
+  };
+
+  fullScreenshot = () => {
+    this.pushCodes(
+      `page.screenshot(new Page.ScreenshotOptions().setPath("screenshot.png").setFullPage(true));`
+    );
+    return this;
+  };
+
+  awaitText = (text: string) => {
+    this.pushCodes(`await page.waitForSelector('text=${text}');`);
+    return this;
+  };
+
+  dragAndDrop = (
+    sourceX: number,
+    sourceY: number,
+    targetX: number,
+    targetY: number
+  ) => {
+    this.pushCodes(
+      [
+        `page.mouse().move(${sourceX}, ${sourceY});`,
+        'page.mouse().down();',
+        `page.mouse().move(${targetX}, ${targetY});`,
+        'page.mouse().up();',
+      ].join('\n')
+    );
+    return this;
+  };
+
+  buildScript = () => {
+    return `import com.microsoft.playwright.*;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.List;
+
+public class PlaywrightScript {
+\tpublic static void Execute(Page page) {
+${this.codes.join('')}
+\t}
+}`;
   };
 }
 
@@ -1001,6 +1164,22 @@ export const genCode = (
         showComments
       );
       scriptBuilder = new PlaywrightPythonScriptBuilder(config);
+      break;
+    case ScriptType.PlaywrightJS:
+      config = new ScriptConfig(
+        ScriptType.PlaywrightJS,
+        ScriptLanguage.JS,
+        showComments
+      );
+      scriptBuilder = new PlaywrightJSScriptBuilder(config);
+      break;
+    case ScriptType.PlaywrightJava:
+      config = new ScriptConfig(
+        ScriptType.PlaywrightJava,
+        ScriptLanguage.Java,
+        showComments
+      );
+      scriptBuilder = new PlaywrightJavaScriptBuilder(config);
       break;
     case ScriptType.Puppeteer:
       config = new ScriptConfig(

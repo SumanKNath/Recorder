@@ -16,7 +16,9 @@ export enum ScriptLanguage {
 
 export enum ScriptType {
   Puppeteer = 'puppeteer',
-  PlaywrightPython = 'playwright',
+  PlaywrightJS = 'playwright-js',
+  PlaywrightPython = 'playwright-python',
+  PlaywrightJava = 'playwright-java',
   Cypress = 'cypress',
   Eventstream = 'eventstream',
 }

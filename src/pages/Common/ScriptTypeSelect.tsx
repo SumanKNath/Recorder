@@ -28,17 +28,23 @@ export default function ScriptTypeSelect({
       value={value}
       data-testid="script-type-select"
     >
-      <option value={ScriptType.Eventstream}>
-        Eventstream{!shortDescription ? ' Library' : ''}
-      </option>
       <option value={ScriptType.PlaywrightPython}>
-        Playwright{!shortDescription ? ' Library' : ''}
+        Playwright-Python{!shortDescription ? ' Library' : ''}
+      </option>
+      <option value={ScriptType.PlaywrightJS}>
+        Playwright-JS{!shortDescription ? ' Library' : ''}
+      </option>
+      <option value={ScriptType.PlaywrightJava}>
+        Playwright-Java{!shortDescription ? ' Library' : ''}
+      </option>
+      <option value={ScriptType.Eventstream}>
+        Eventstream-JS{!shortDescription ? ' Library' : ''}
       </option>
       <option value={ScriptType.Puppeteer}>
-        Puppeteer{!shortDescription ? ' Library' : ''}
+        Puppeteer-JS{!shortDescription ? ' Library' : ''}
       </option>
       <option value={ScriptType.Cypress}>
-        Cypress{!shortDescription ? ' Library' : ''}
+        Cypress-JS{!shortDescription ? ' Library' : ''}
       </option>
     </select>
   );
