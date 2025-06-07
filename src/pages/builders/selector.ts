@@ -113,6 +113,7 @@ export function getBestSelectorForActionOld(
 ) {
   switch (action.type) {
     case ActionType.Click:
+    case ActionType.DblClick:
     case ActionType.Hover:
     case ActionType.DragAndDrop: {
       const selectors = action.selectors;
@@ -122,6 +123,7 @@ export function getBestSelectorForActionOld(
           library === ScriptType.PlaywrightJS ||
           library === ScriptType.PlaywrightJava) &&
         selectors?.text?.length != null &&
+        selectors?.text?.length > 0 &&
         selectors?.text?.length < 25 &&
         action.hasOnlyText
           ? `text=${selectors.text}`
@@ -206,6 +208,7 @@ export function getString(str: string | null) {
 export function getBestSelectorForAction(action: Action, library: ScriptType) {
   switch (action.type) {
     case ActionType.Click:
+    case ActionType.DblClick:
     case ActionType.Hover:
     case ActionType.DragAndDrop: {
       const selectors = action.selectors;
@@ -215,9 +218,10 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
           library === ScriptType.PlaywrightJS ||
           library === ScriptType.PlaywrightJava) &&
         selectors?.text?.length != null &&
-        selectors?.text?.length < 25 &&
-        action.hasOnlyText
-          ? `text=${selectors.text}`
+        selectors?.text?.length > 0 &&
+        selectors?.text?.length < 25
+          ? // && action.hasOnlyText
+            `text=${selectors.text}`
           : null;
 
       if (action.tagName === TagName.Input) {
@@ -227,7 +231,8 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
           getString(selectors?.formSelector) +
           getString(selectors?.accessibilitySelector) +
           getString(selectors?.generalSelector) +
-          getString(selectors?.attrSelector);
+          getString(selectors?.attrSelector) +
+          getString(textSelector);
         return selString;
       }
       if (action.tagName === TagName.A) {
@@ -237,7 +242,8 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
           getString(selectors?.hrefSelector) +
           getString(selectors?.accessibilitySelector) +
           getString(selectors?.generalSelector) +
-          getString(selectors?.attrSelector);
+          getString(selectors?.attrSelector) +
+          getString(textSelector);
         return selString;
       }
 
@@ -265,19 +271,32 @@ export function getBestSelectorForAction(action: Action, library: ScriptType) {
         getString(selectors?.accessibilitySelector) +
         getString(selectors?.hrefSelector) +
         getString(selectors?.generalSelector) +
-        getString(selectors?.attrSelector);
+        getString(selectors?.attrSelector) +
+        getString(textSelector);
       return selString;
     }
     case ActionType.Input:
     case ActionType.Keydown: {
       const selectors = action.selectors;
+      const textSelector =
+        (library === ScriptType.PlaywrightPython ||
+          library === ScriptType.PlaywrightJS ||
+          library === ScriptType.PlaywrightJava) &&
+        selectors?.text?.length != null &&
+        selectors?.text?.length > 0 &&
+        selectors?.text?.length < 25
+          ? // && action.hasOnlyText
+            `text=${selectors.text}`
+          : null;
+
       const selString =
         getString(selectors.testIdSelector) +
         getString(selectors?.id) +
         getString(selectors?.formSelector) +
         getString(selectors?.accessibilitySelector) +
         getString(selectors?.generalSelector) +
-        getString(selectors?.attrSelector);
+        getString(selectors?.attrSelector) +
+        getString(textSelector);
       return selString;
     }
     default:

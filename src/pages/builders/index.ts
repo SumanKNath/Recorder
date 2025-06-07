@@ -1,6 +1,6 @@
 import { getBestSelectorForAction } from './selector';
 
-import { Action, ScriptLanguage } from '../types';
+import { Action, ActionsMode, ScriptLanguage } from '../types';
 import {
   ActionType,
   BaseAction,
@@ -84,30 +84,30 @@ export class ActionContext extends BaseAction {
     return this.actionState;
   }
 
+  getText() {
+    const { type, selectors, tagName, value } = this.action;
+    return `<${tagName.toLowerCase()}> ${
+      selectors.text != null && selectors.text.length > 0
+        ? `"${truncateText(selectors.text.replace(/\s/g, ' '), 25)}"`
+        : '' //getBestSelectorForAction(this.action, this.scriptType)
+    }`;
+  }
+
   getDescription() {
     const { type, selectors, tagName, value } = this.action;
 
     switch (type) {
       case ActionType.Click:
-        return `Click on <${tagName.toLowerCase()}> ${
-          selectors.text != null && selectors.text.length > 0
-            ? `"${truncateText(selectors.text.replace(/\s/g, ' '), 25)}"`
-            : getBestSelectorForAction(this.action, this.scriptType)
-        }`;
+        return `Click on ${this.getText()}`;
+      case ActionType.DblClick:
+        return `DblClick on ${this.getText()}`;
       case ActionType.Hover:
-        return `Hover over <${tagName.toLowerCase()}> ${
-          selectors.text != null && selectors.text.length > 0
-            ? `"${truncateText(selectors.text.replace(/\s/g, ' '), 25)}"`
-            : getBestSelectorForAction(this.action, this.scriptType)
-        }`;
+        return `Hover over ${this.getText()}`;
       case ActionType.Input:
         return `Fill ${truncateText(
           JSON.stringify(value ?? ''),
           16
-        )} on <${tagName.toLowerCase()}> ${getBestSelectorForAction(
-          this.action,
-          this.scriptType
-        )}`;
+        )} on ${this.getText()}`;
       case ActionType.Keydown:
         return `Press ${this.action.key} on ${tagName.toLowerCase()}`;
       case ActionType.Load:
@@ -124,14 +124,11 @@ export class ActionContext extends BaseAction {
           25
         )} to appear`;
       case ActionType.DragAndDrop:
-        return `Drag n drop ${getBestSelectorForAction(
-          this.action,
-          this.scriptType
-        )} from (${this.action.sourceX}, ${this.action.sourceY}) to (${
-          this.action.targetX
-        }, ${this.action.targetY})`;
+        return `Drag n drop ${this.getText()} from (${this.action.sourceX}, ${
+          this.action.sourceY
+        }) to (${this.action.targetX}, ${this.action.targetY})`;
       case ActionType.Voice:
-        return 'Voice:' + this.action.value;
+        return 'Voice: ' + this.action.value;
       default:
         return '';
     }
@@ -168,7 +165,7 @@ export class ScriptConfig {
       this.commentPrefix = '#';
       this.lineEnding = '';
     } else if (scriptLanguage == ScriptLanguage.Java) {
-      this.padding = '  ';
+      this.padding = '\t';
       this.commentPrefix = '//';
       this.lineEnding = ';';
     }
@@ -189,6 +186,8 @@ export abstract class ScriptBuilder {
   }
 
   abstract click: (selector: string, causesNavigation: boolean) => this;
+
+  abstract dblClick: (selector: string, causesNavigation: boolean) => this;
 
   abstract hover: (selector: string, causesNavigation: boolean) => this;
 
@@ -258,6 +257,9 @@ export abstract class ScriptBuilder {
       case ActionType.Click:
         this.click(bestSelector as string, causesNavigation);
         break;
+      case ActionType.DblClick:
+        this.dblClick(bestSelector as string, causesNavigation);
+        break;
       case ActionType.Hover:
         this.hover(bestSelector as string, causesNavigation);
         break;
@@ -320,6 +322,7 @@ export abstract class ScriptBuilder {
   };
 
   protected pushComments = (comments: string) => {
+    this.codes.push('\n');
     this.codes.push(`${this.config.padding}${comments}\n`);
     return this;
   };
@@ -377,6 +380,15 @@ export class PlaywrightJSScriptBuilder extends ScriptBuilder {
 
   click = (selector: string, causesNavigation: boolean) => {
     const actionStr = `page.click('${selector}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `await ${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  dblClick = (selector: string, causesNavigation: boolean) => {
+    const actionStr = `page.dblclick('${selector}')`;
     const action = causesNavigation
       ? this.waitForActionAndNavigation(actionStr)
       : `await ${actionStr};`;
@@ -487,43 +499,31 @@ test('Written with Web UI Recorder', async ({ page }) => {${this.codes.join(
 }
 
 export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
-  private waitForActionAndNavigation(action: string) {
-    // return `await Promise.all([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
-    return `${action}\nawait asyncio.sleep(2)`;
-  }
-
-  private useMultipleSelectors(sel_str: string, command: string) {
-    return [
-      `selector_string = '${sel_str}'`,
-      `selectors = set(selector_string.split('|'))`,
-      `for selector in selectors:`,
-      `\tif selector and await page.query_selector(selector):`,
-      `\t\t${command}`,
-      `\t\tbreak`,
-    ].join('\n');
+  private waitForActionAndNavigation(action: string, wait: boolean) {
+    return wait ? `${action}\nawait asyncio.sleep(2)` : action;
   }
 
   click = (selectorStr: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      'await page.click(selector)'
+    const actionStr = `await interact(page, '${selectorStr}', "click")`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
+    return this;
+  };
+
+  dblClick = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = `await interact(page, '${selectorStr}', "dblclick")`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
+    );
     return this;
   };
 
   hover = (selectorStr: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      'await page.hover(selector)'
+    const actionStr = `await interact(page, '${selectorStr}', "hover")`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
@@ -540,50 +540,36 @@ export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
   };
 
   fill = (selectorStr: string, value: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `await page.fill(selector, ${JSON.stringify(value)})`
+    const actionStr = `await interact(page, '${selectorStr}', "fill", '${value}');`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   type = (selectorStr: string, value: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `await page.type(selector, ${JSON.stringify(value)})`
+    const actionStr = `await interact(page, '${selectorStr}', "type", '${value}');`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   select = (selectorStr: string, option: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `await page.select_option(selector, '${option}')`
+    const actionStr = `await interact(page, '${selectorStr}', "select_option", '${option}');`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   keydown = (selectorStr: string, key: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `await page.press(selector, '${key}')`
+    const actionStr = ['r', 'R'].includes(key)
+      ? `v = await read_inner_text(page, '${selectorStr}')\nprint(v)`
+      : `interact(page, '${selectorStr}', "press", '${key}');`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
@@ -623,64 +609,69 @@ export class PlaywrightPythonScriptBuilder extends ScriptBuilder {
     return this;
   };
 
-  buildScript = () => {
-    return `from playwright.async_api import async_playwright, Page
+  scriptPrefix = () => {
+    return `from playwright.async_api import async_playwright
 import asyncio
-async def execute(page):\n ${this.codes.join('')}`;
+
+async def read_inner_text(page, selectors):
+  for s in set(selectors.split('|')):
+    if s:
+      element = await page.query_selector(s)
+      if element:
+        return await element.inner_text()
+
+async def interact(page, selectors, action, value=None):
+  for s in set(selectors.split('|')):
+    if s and await page.query_selector(s):
+      await getattr(page, action)(s, value) if value else await getattr(page, action)(s)
+      break
+
+async def execute(page):`;
+  };
+
+  buildScript = () => {
+    return `${this.scriptPrefix()}\n${this.codes.join('')}`;
   };
 }
 
 export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   protected varCreated: boolean = false;
 
-  private waitForActionAndNavigation(action: string) {
-    // return `await Promise.all([\n    ${action},\n    ${this.waitForNavigation()}\n  ]);`;
-    return `${action};\nThread.sleep(2000);`;
+  private waitForActionAndNavigation(action: string, wait: boolean) {
+    return wait ? `${action};\npage.waitForTimeout(2000);` : action;
   }
 
-  private useMultipleSelectors(sel_str: string, command: string) {
-    let varDeclPrefix = '';
-    if (!this.varCreated) {
-      varDeclPrefix = 'List<String> ';
-      this.varCreated = true;
-    }
-
-    return [
-      `String selector_string = '${sel_str}';`,
-      `${varDeclPrefix}uniqueSelectors = Arrays.stream(input.split("\\|"))`,
-      `                                    .filter(s -> !s.isEmpty())`,
-      `                                    .distinct()`,
-      `                                    .toList();`,
-      ` for (String selector : uniqueSelectors) {`,
-      `\tif (page.querySelector(selector) != null) {`,
-      `\t\t${command};`,
-      `\t\tbreak;`,
-      `\t}`,
-      `}`,
-    ].join('\n');
+  private escapeQuotes(input: string): string {
+    return input.replace(/"/g, '\\"');
   }
 
   click = (selectorStr: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      'page.click(selector);'
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "click", null);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
+    return this;
+  };
+
+  dblClick = (selectorStr: string, causesNavigation: boolean) => {
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "dblclick", null);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
+    );
     return this;
   };
 
   hover = (selectorStr: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      'page.hover(selector);'
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "hover", null);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
@@ -695,50 +686,42 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   };
 
   fill = (selectorStr: string, value: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `page.fill(selector, ${JSON.stringify(value)});`
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "fill", value);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   type = (selectorStr: string, value: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `page.type(selector, ${JSON.stringify(value)});`
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "type", value);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   select = (selectorStr: string, option: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `page.selectOption(selector, '${option}');`
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "selectOption", option);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
   keydown = (selectorStr: string, key: string, causesNavigation: boolean) => {
-    const actionStr = this.useMultipleSelectors(
-      selectorStr,
-      `page.press(selector, '${key}');`
+    const actionStr = `interact(page, "${this.escapeQuotes(
+      selectorStr
+    )}", "press", key);`;
+    this.pushCodes(
+      this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
-    const action = causesNavigation
-      ? this.waitForActionAndNavigation(actionStr)
-      : actionStr;
-    this.pushCodes(action);
     return this;
   };
 
@@ -778,17 +761,35 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
     return this;
   };
 
-  buildScript = () => {
+  scriptPrefix = () => {
     return `import com.microsoft.playwright.*;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
+public class AutomationScript {
+  public static void execute(Page page) {`;
+  };
 
-public class PlaywrightScript {
-\tpublic static void Execute(Page page) {
+  scriptSuffix = () => {
+    return `
+  }
+    
+  private static void interact(Page page, String selectorString, String action, String value) {
+    for (String selector : selectorString.split("\\|")) {
+      if (!selector.isEmpty() && page.querySelector(selector) != null) {
+        if ("click".equals(action)) page.click(selector);
+        else if ("fill".equals(action)) page.fill(selector, value);
+        else if ("press".equals(action)) page.press(selector, value);
+        else if ("hover".equals(action)) page.hover(selector);
+        else if ("selectOption".equals(action)) page.selectOption(selector, value);
+        break;
+      }
+    }
+  }`;
+  };
+
+  buildScript = () => {
+    return `${this.scriptPrefix()}
 ${this.codes.join('')}
-\t}
-}`;
+${this.scriptSuffix()}
+`;
   };
 }
 
@@ -807,6 +808,18 @@ export class PuppeteerScriptBuilder extends ScriptBuilder {
 
   click = (selector: string, causesNavigation: boolean) => {
     const pageClick = `page.click('${selector}')`;
+    if (causesNavigation) {
+      this.pushCodes(this.waitForSelectorAndNavigation(selector, pageClick));
+    } else {
+      this.pushCodes(
+        `await ${this.waitForSelector(selector)};\n  await ${pageClick};`
+      );
+    }
+    return this;
+  };
+
+  dblClick = (selector: string, causesNavigation: boolean) => {
+    const pageClick = `page.dblclick('${selector}')`;
     if (causesNavigation) {
       this.pushCodes(this.waitForSelectorAndNavigation(selector, pageClick));
     } else {
@@ -959,6 +972,11 @@ export class CypressScriptBuilder extends ScriptBuilder {
     return this;
   };
 
+  dblClick = (selector: string, causesNavigation: boolean) => {
+    this.pushCodes(`cy.get('${selector}').dblclick();`);
+    return this;
+  };
+
   hover = (selector: string, causesNavigation: boolean) => {
     this.pushCodes(`cy.get('${selector}').trigger('mouseover');`);
     return this;
@@ -1047,6 +1065,15 @@ export class EventstreamScriptBuilder extends ScriptBuilder {
 
   click = (selector: string, causesNavigation: boolean) => {
     const actionStr = `Click('${selector}')`;
+    const action = causesNavigation
+      ? this.waitForActionAndNavigation(actionStr)
+      : `${actionStr};`;
+    this.pushCodes(action);
+    return this;
+  };
+
+  dblClick = (selector: string, causesNavigation: boolean) => {
+    const actionStr = `DblClick('${selector}')`;
     const action = causesNavigation
       ? this.waitForActionAndNavigation(actionStr)
       : `${actionStr};`;

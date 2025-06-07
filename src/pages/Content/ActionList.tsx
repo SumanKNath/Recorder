@@ -33,6 +33,21 @@ function ActionListItem({
             </span>
           )}
         </>
+      ) : action.type === ActionType.DblClick ? (
+        <>
+          <span className="em-text">DblClick</span> on{' '}
+          <span className="mono">
+            {action.tagName === 'A' ? 'link' : action.tagName.toLowerCase()}
+          </span>{' '}
+          {(action.selectors.text?.length ?? -1) > 0 &&
+          (action.selectors.text?.length ?? -1) < 75 ? (
+            <span>"{action.selectors.text}"</span>
+          ) : (
+            <span className="mono">
+              {getBestSelectorForAction(action, ScriptType.PlaywrightPython)}
+            </span>
+          )}
+        </>
       ) : action.type === ActionType.Hover ? (
         <>
           <span className="em-text">Hover</span> over{' '}

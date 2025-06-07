@@ -26,6 +26,7 @@ export enum ScriptType {
 export enum ActionType {
   AwaitText = 'awaitText',
   Click = 'click',
+  DblClick = 'dblClick',
   DragAndDrop = 'dragAndDrop',
   FullScreenshot = 'fullScreenshot',
   Hover = 'hover',
@@ -55,6 +56,7 @@ export const isSupportedActionType = (actionType: any) => {
   return [
     ActionType.AwaitText,
     ActionType.Click,
+    ActionType.DblClick,
     ActionType.DragAndDrop,
     ActionType.FullScreenshot,
     ActionType.Hover,
@@ -93,6 +95,10 @@ class VoiceAction extends BaseAction {
 
 class ClickAction extends BaseAction {
   type: ActionType.Click;
+}
+
+class DblClickAction extends BaseAction {
+  type: ActionType.DblClick;
 }
 
 class DragAndDropAction extends BaseAction {
@@ -145,6 +151,7 @@ export type Action =
   | KeydownAction
   | InputAction
   | ClickAction
+  | DblClickAction
   | DragAndDropAction
   | HoverAction
   | LoadAction
