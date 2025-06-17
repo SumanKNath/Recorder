@@ -676,7 +676,7 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   };
 
   load = (url: string) => {
-    this.pushCodes(`page.navigate('${url}');`);
+    this.pushCodes(`page.navigate("${url}");`);
     return this;
   };
 
@@ -688,7 +688,7 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   fill = (selectorStr: string, value: string, causesNavigation: boolean) => {
     const actionStr = `interact(page, "${this.escapeQuotes(
       selectorStr
-    )}", "fill", value);`;
+    )}", "fill", "${value}");`;
     this.pushCodes(
       this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
@@ -698,7 +698,7 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   type = (selectorStr: string, value: string, causesNavigation: boolean) => {
     const actionStr = `interact(page, "${this.escapeQuotes(
       selectorStr
-    )}", "type", value);`;
+    )}", "type", "${value}");`;
     this.pushCodes(
       this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
@@ -708,7 +708,7 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   select = (selectorStr: string, option: string, causesNavigation: boolean) => {
     const actionStr = `interact(page, "${this.escapeQuotes(
       selectorStr
-    )}", "selectOption", option);`;
+    )}", "selectOption", "${option}";`;
     this.pushCodes(
       this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
@@ -719,8 +719,8 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
     selectorStr = this.escapeQuotes(selectorStr);
 
     const actionStr = ['r', 'R'].includes(key)
-      ? `v = readInnerText(page, '${selectorStr}')\nprint(v)`
-      : `interact(page, '${selectorStr}', "press", '${key}');`;
+      ? `v = readInnerText(page, "${selectorStr}")\nprint(v)`
+      : `interact(page, "${selectorStr}", "press", "${key}");`;
 
     this.pushCodes(
       this.waitForActionAndNavigation(actionStr, causesNavigation)
@@ -743,7 +743,7 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   };
 
   awaitText = (text: string) => {
-    this.pushCodes(`await page.waitForSelector('text=${text}');`);
+    this.pushCodes(`await page.waitForSelector("text=${text}");`);
     return this;
   };
 
@@ -778,7 +778,7 @@ public class AutomationScript {
   }
     
   private static String readInnerText(Page page, String selectors) {
-    for (String selector : new LinkedHashSet<>(Arrays.asList(selectors.split("\\|")))) {
+    for (String selector : new LinkedHashSet<>(Arrays.asList(selectors.split("\\\\|")))) {
       if (!selector.isEmpty()) {
         ElementHandle element = page.querySelector(selector);
         if (element != null) {
@@ -790,7 +790,7 @@ public class AutomationScript {
   }
 
   private static void interact(Page page, String selectorString, String action, String value) {
-    for (String selector : selectorString.split("\\|")) {
+    for (String selector : selectorString.split("\\\\|")) {
       if (!selector.isEmpty() && page.querySelector(selector) != null) {
         if ("click".equals(action)) page.click(selector);
         else if ("fill".equals(action)) page.fill(selector, value);
@@ -800,7 +800,8 @@ public class AutomationScript {
         break;
       }
     }
-  }`;
+  }
+}`;
   };
 
   buildScript = () => {
