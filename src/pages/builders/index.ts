@@ -716,9 +716,12 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
   };
 
   keydown = (selectorStr: string, key: string, causesNavigation: boolean) => {
-    const actionStr = `interact(page, "${this.escapeQuotes(
-      selectorStr
-    )}", "press", key);`;
+    selectorStr = this.escapeQuotes(selectorStr);
+
+    const actionStr = ['r', 'R'].includes(key)
+      ? `v = readInnerText(page, '${selectorStr}')\nprint(v)`
+      : `interact(page, '${selectorStr}', "press", '${key}');`;
+
     this.pushCodes(
       this.waitForActionAndNavigation(actionStr, causesNavigation)
     );
@@ -763,6 +766,9 @@ export class PlaywrightJavaScriptBuilder extends ScriptBuilder {
 
   scriptPrefix = () => {
     return `import com.microsoft.playwright.*;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+
 public class AutomationScript {
   public static void execute(Page page) {`;
   };
@@ -771,6 +777,18 @@ public class AutomationScript {
     return `
   }
     
+  private static String readInnerText(Page page, String selectors) {
+    for (String selector : new LinkedHashSet<>(Arrays.asList(selectors.split("\\|")))) {
+      if (!selector.isEmpty()) {
+        ElementHandle element = page.querySelector(selector);
+        if (element != null) {
+          return element.innerText();
+        }
+      }
+    }
+    return null;
+  }
+
   private static void interact(Page page, String selectorString, String action, String value) {
     for (String selector : selectorString.split("\\|")) {
       if (!selector.isEmpty() && page.querySelector(selector) != null) {
